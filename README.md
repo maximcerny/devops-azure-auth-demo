@@ -14,6 +14,8 @@
 
 ### Option 1: Interactive Login (Browser)
 
+tohle je navic
+
 ```bash
 gh auth login
 # Select: GitHub.com
