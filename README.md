@@ -80,84 +80,13 @@ git clone https://github.com/owner/repo-name.git
 
 **Important:** Never push directly to `main`/`master`. Always use feature branches and pull requests.
 
-### 1. Create a Feature Branch
-
-```bash
-# Make sure you're on master and up to date
-git checkout master
-git pull origin master
-
-# Create and switch to a new feature branch
-git checkout -b feature/my-new-feature
-```
-
-### 2. Make Changes and Commit
-
-```bash
-# Make your changes...
-
-# Stage changes
-git add .
-
-# Commit with a descriptive message
-git commit -m "feat: add user authentication"
-```
-
-### 3. Push Feature Branch to Remote
-
-```bash
-git push -u origin feature/my-new-feature
-```
-
-### 4. Create a Pull Request
-
-```bash
-# Create PR via GitHub CLI
-gh pr create --title "Add user authentication" --body "Description of changes"
-
-# Or create PR and open in browser
-gh pr create --web
-```
-
-### 5. Code Review and Approval
-
-- Reviewer reviews the code on GitHub
-- Reviewer approves or requests changes
-- Author addresses feedback if needed
-
-```bash
-# View PR status
-gh pr status
-
-# View PR checks
-gh pr checks
-```
-
-### 6. Merge Pull Request
-
-```bash
-# Merge via CLI (after approval)
-gh pr merge --squash --delete-branch
-
-# Or merge via GitHub web UI
-```
-
-### 7. Update Local Master
-
-```bash
-git checkout master
-git pull origin master
-```
-
-### Branch Naming Conventions
-
-| Prefix | Purpose | Example |
-|--------|---------|---------|
-| `feature/` | New feature | `feature/user-login` |
-| `fix/` | Bug fix | `fix/login-error` |
-| `docs/` | Documentation | `docs/update-readme` |
-| `refactor/` | Code refactoring | `refactor/auth-module` |
-| `chore/` | Maintenance | `chore/update-deps` |
+1. Create a feature branch from `master`
+2. Make changes and commit
+3. Push feature branch to remote
+4. Create a Pull Request
+5. Code review and approval
+6. Merge Pull Request
+7. Update local master
 
 ---
 
