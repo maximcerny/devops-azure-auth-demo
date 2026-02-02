@@ -1,5 +1,166 @@
 # DevOps Training - Module 1: Connecting GitHub to Azure
 
+## Prerequisites
+
+- [Git](https://git-scm.com/downloads) installed
+- [GitHub CLI (gh)](https://cli.github.com/) installed
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
+- GitHub account
+- Azure subscription
+
+---
+
+## GitHub CLI Authentication
+
+### Option 1: Interactive Login (Browser)
+
+```bash
+gh auth login
+# Select: GitHub.com
+# Select: HTTPS
+# Select: Login with a web browser
+# Copy the code and paste it in the browser
+```
+
+### Option 2: Login with Personal Access Token (PAT)
+
+```bash
+# Create PAT at: https://github.com/settings/tokens
+# Required scopes: repo, read:org, workflow
+
+# Login with token (interactive)
+gh auth login
+# Select: GitHub.com
+# Select: HTTPS
+# Select: Paste an authentication token
+# Paste your PAT
+
+# Or login with token from file
+gh auth login --with-token < token.txt
+
+# Or login with token from environment variable
+echo "ghp_your_token_here" | gh auth login --with-token
+```
+
+### Verify Login
+
+```bash
+gh auth status
+```
+
+---
+
+## Creating and Cloning a Repository
+
+### Create a New Repository
+
+```bash
+# Create repo on GitHub and clone locally
+gh repo create my-project --public --clone
+
+# Or create from existing local folder
+cd my-project
+git init
+gh repo create my-project --public --source=. --push
+```
+
+### Clone an Existing Repository
+
+```bash
+# Clone via GitHub CLI
+gh repo clone owner/repo-name
+
+# Or clone via Git
+git clone https://github.com/owner/repo-name.git
+```
+
+---
+
+## Git Workflow (Feature Branch → PR → Approval → Merge)
+
+**Important:** Never push directly to `main`/`master`. Always use feature branches and pull requests.
+
+### 1. Create a Feature Branch
+
+```bash
+# Make sure you're on master and up to date
+git checkout master
+git pull origin master
+
+# Create and switch to a new feature branch
+git checkout -b feature/my-new-feature
+```
+
+### 2. Make Changes and Commit
+
+```bash
+# Make your changes...
+
+# Stage changes
+git add .
+
+# Commit with a descriptive message
+git commit -m "feat: add user authentication"
+```
+
+### 3. Push Feature Branch to Remote
+
+```bash
+git push -u origin feature/my-new-feature
+```
+
+### 4. Create a Pull Request
+
+```bash
+# Create PR via GitHub CLI
+gh pr create --title "Add user authentication" --body "Description of changes"
+
+# Or create PR and open in browser
+gh pr create --web
+```
+
+### 5. Code Review and Approval
+
+- Reviewer reviews the code on GitHub
+- Reviewer approves or requests changes
+- Author addresses feedback if needed
+
+```bash
+# View PR status
+gh pr status
+
+# View PR checks
+gh pr checks
+```
+
+### 6. Merge Pull Request
+
+```bash
+# Merge via CLI (after approval)
+gh pr merge --squash --delete-branch
+
+# Or merge via GitHub web UI
+```
+
+### 7. Update Local Master
+
+```bash
+git checkout master
+git pull origin master
+```
+
+### Branch Naming Conventions
+
+| Prefix | Purpose | Example |
+|--------|---------|---------|
+| `feature/` | New feature | `feature/user-login` |
+| `fix/` | Bug fix | `fix/login-error` |
+| `docs/` | Documentation | `docs/update-readme` |
+| `refactor/` | Code refactoring | `refactor/auth-module` |
+| `chore/` | Maintenance | `chore/update-deps` |
+
+---
+
 ## Outline
 
 ### 1.1 Introduction
