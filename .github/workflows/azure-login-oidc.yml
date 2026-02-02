@@ -1,6 +1,8 @@
 name: "Azure Login (OIDC)"
 
 on:
+  push:
+    branches: [master]
   workflow_dispatch:
     inputs:
       resource_group:
