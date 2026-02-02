@@ -1,137 +1,233 @@
-# DevOps Školení - Modul 1: Propojení GitHub s Azure
+# DevOps Training - Module 1: Connecting GitHub to Azure
 
-## Osnova
+## Outline
 
-### 1.1 Úvod
-- Proč potřebujeme propojit GitHub s Azure
-- Přehled možností autentizace
-- Bezpečnostní aspekty (secrets vs. OIDC)
+### 1.1 Introduction
+- Why we need to connect GitHub to Azure
+- Overview of authentication options
+- Security aspects (secrets vs. OIDC)
 
-### 1.2 Varianta A: Service Principal + Secret
+### 1.2 Variant A: Service Principal + Secret
 
-**Teorie:**
-- Co je Service Principal
+**Theory:**
+- What is a Service Principal
 - App Registration vs. Service Principal
 - Role-Based Access Control (RBAC)
 
-**Praktická ukázka:**
-1. Vytvoření App Registration v Azure AD
-2. Vygenerování client secret
-3. Přiřazení RBAC role (např. Contributor na RG)
-4. Uložení credentials do GitHub Secrets:
+**Practical demo:**
+1. Create App Registration in Azure AD
+2. Generate client secret
+3. Assign RBAC role (e.g., Contributor on RG)
+4. Store credentials in GitHub Secrets:
    - `AZURE_CLIENT_ID`
    - `AZURE_CLIENT_SECRET`
    - `AZURE_TENANT_ID`
    - `AZURE_SUBSCRIPTION_ID`
-5. Použití `azure/login@v2` action
+5. Use `azure/login@v2` action
 
-**Nevýhody:**
-- Secret má expiraci
-- Secret je citlivý údaj
+**Disadvantages:**
+- Secret has expiration
+- Secret is a sensitive credential
 
 ---
 
-### 1.3 Varianta B: Service Principal + OIDC (Workload Identity Federation)
+### 1.3 Variant B: Service Principal + OIDC (Workload Identity Federation)
 
-**Teorie:**
-- Co je OIDC a proč je bezpečnější
-- Federated credentials - jak fungují
-- Žádné secrets v GitHubu
+**Theory:**
+- What is OIDC and why it's more secure
+- Federated credentials - how they work
+- No secrets in GitHub
 
-**Praktická ukázka:**
-1. Vytvoření App Registration
-2. Konfigurace Federated Credential:
+**Practical demo:**
+1. Create App Registration
+2. Configure Federated Credential:
    - Issuer: `https://token.actions.githubusercontent.com`
    - Subject: `repo:org/repo:ref:refs/heads/main`
-3. Přiřazení RBAC role
-4. GitHub workflow s `permissions: id-token: write`
-5. Login bez secrets
+3. Assign RBAC role
+4. GitHub workflow with `permissions: id-token: write`
+5. Login without secrets
 
 ---
 
-### 1.4 Varianta C: User Assigned Managed Identity (UAMI)
+### 1.4 Variant C: User Assigned Managed Identity (UAMI)
 
-**Teorie:**
-- Co je Managed Identity
+**Theory:**
+- What is Managed Identity
 - System vs. User Assigned
-- Kdy použít UAMI (self-hosted runners)
+- When to use UAMI (self-hosted runners)
 
-**Praktická ukázka:**
-1. Vytvoření UAMI v Azure
-2. Přiřazení RBAC role
-3. Konfigurace Federated Credential na UAMI
-4. Přiřazení UAMI k VM (self-hosted runner)
-5. GitHub workflow bez explicitních credentials
+**Practical demo:**
+1. Create UAMI in Azure
+2. Assign RBAC role
+3. Configure Federated Credential on UAMI
+4. Assign UAMI to VM (self-hosted runner)
+5. GitHub workflow without explicit credentials
 
-**Výhody:**
-- Žádné secrets
-- Žádná expirace
-- Centrální správa identity
+**Advantages:**
+- No secrets
+- No expiration
+- Centralized identity management
 
 ---
 
-### 1.5 Srovnání a best practices
+### 1.5 Comparison and Best Practices
 
-| Aspekt | SP + Secret | SP + OIDC | UAMI |
+| Aspect | SP + Secret | SP + OIDC | UAMI |
 |--------|-------------|-----------|------|
-| Secrets v GH | Ano | Ne | Ne |
-| Expirace | Ano | Ne | Ne |
-| Self-hosted only | Ne | Ne | Ano |
-| Složitost | Nízká | Střední | Střední |
+| Secrets in GH | Yes | No | No |
+| Expiration | Yes | No | No |
+| Self-hosted only | No | No | Yes |
+| Complexity | Low | Medium | Medium |
 
-**Doporučení:**
+**Recommendations:**
 - GitHub-hosted runners → SP + OIDC
 - Self-hosted runners → UAMI
-- Legacy/rychlé testy → SP + Secret
+- Legacy/quick tests → SP + Secret
+
+---
+
+## Azure CLI Setup
+
+### Create App Registration and Service Principal
+
+```bash
+# Login to Azure
+az login
+
+# Create App Registration
+az ad app create --display-name "github-actions-demo"
+
+# Save the appId from output
+APP_ID=$(az ad app list --display-name "github-actions-demo" --query "[0].appId" -o tsv)
+
+# Create Service Principal
+az ad sp create --id $APP_ID
+
+# Get Service Principal Object ID (needed for role assignment)
+SP_OBJECT_ID=$(az ad sp show --id $APP_ID --query "id" -o tsv)
+
+echo "Application (Client) ID: $APP_ID"
+echo "Service Principal Object ID: $SP_OBJECT_ID"
+```
+
+### Create Client Secret (for Variant A)
+
+```bash
+# Create client secret (valid for 1 year)
+az ad app credential reset \
+  --id $APP_ID \
+  --append \
+  --years 1
+
+# Save the "password" from output - this is your AZURE_CLIENT_SECRET
+```
+
+### Assign RBAC Role
+
+```bash
+# Get your subscription ID
+SUBSCRIPTION_ID=$(az account show --query "id" -o tsv)
+
+# Assign Contributor role on a resource group
+az role assignment create \
+  --assignee $APP_ID \
+  --role "Contributor" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP"
+
+# Or assign on entire subscription (less secure)
+az role assignment create \
+  --assignee $APP_ID \
+  --role "Contributor" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID"
+```
+
+### Create Federated Credential (for Variant B - OIDC)
+
+```bash
+# For a specific branch (e.g., main)
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-main-branch",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_ORG/YOUR_REPO:ref:refs/heads/main",
+    "audiences": ["api://AzureADTokenExchange"],
+    "description": "GitHub Actions - main branch"
+  }'
+
+# For pull requests
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-pull-requests",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_ORG/YOUR_REPO:pull_request",
+    "audiences": ["api://AzureADTokenExchange"],
+    "description": "GitHub Actions - pull requests"
+  }'
+
+# For a specific environment (e.g., production)
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-production-env",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_ORG/YOUR_REPO:environment:production",
+    "audiences": ["api://AzureADTokenExchange"],
+    "description": "GitHub Actions - production environment"
+  }'
+```
+
+### Get Required Values for GitHub Secrets
+
+```bash
+# Display all values you need for GitHub secrets
+echo "=== GitHub Secrets ==="
+echo "AZURE_CLIENT_ID: $APP_ID"
+echo "AZURE_TENANT_ID: $(az account show --query 'tenantId' -o tsv)"
+echo "AZURE_SUBSCRIPTION_ID: $(az account show --query 'id' -o tsv)"
+echo ""
+echo "For Variant A only:"
+echo "AZURE_CLIENT_SECRET: <from 'az ad app credential reset' output>"
+```
 
 ---
 
 ## Demo Workflows
 
-Toto repo obsahuje dva demo workflow soubory:
+This repo contains two demo workflow files:
 
-| Workflow | Soubor | Auth metoda |
-|----------|--------|-------------|
+| Workflow | File | Auth Method |
+|----------|------|-------------|
 | Azure Login (Secret) | `.github/workflows/azure-login-secret.yml` | Client ID + Secret |
 | Azure Login (OIDC) | `.github/workflows/azure-login-oidc.yml` | Federated Credentials |
 
 ---
 
-## Konfigurace
+## Configuration
 
-### Pro variantu A (Client Secret)
+### For Variant A (Client Secret)
 
-Přidej tyto secrets do GitHub repository:
+Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
 - `AZURE_CLIENT_ID` - Application (client) ID
 - `AZURE_CLIENT_SECRET` - Client secret value
 - `AZURE_TENANT_ID` - Directory (tenant) ID
 - `AZURE_SUBSCRIPTION_ID` - Subscription ID
 
-### Pro variantu B (OIDC)
+### For Variant B (OIDC)
 
-1. Přidej Federated Credential do App Registration:
-   ```bash
-   az ad app federated-credential create \
-     --id <APPLICATION_ID> \
-     --parameters '{
-       "name": "github-main-branch",
-       "issuer": "https://token.actions.githubusercontent.com",
-       "subject": "repo:OWNER/REPO:ref:refs/heads/main",
-       "audiences": ["api://AzureADTokenExchange"]
-     }'
-   ```
-
-2. Přidej tyto secrets do GitHub repository:
+1. Create Federated Credential (see CLI commands above)
+2. Add these secrets to your GitHub repository:
    - `AZURE_CLIENT_ID` - Application (client) ID
    - `AZURE_TENANT_ID` - Directory (tenant) ID
    - `AZURE_SUBSCRIPTION_ID` - Subscription ID
 
-**Poznámka:** Pro OIDC není potřeba client secret!
+**Note:** No client secret needed for OIDC!
 
 ---
 
-## Spuštění
+## Running the Workflows
 
-1. Jdi do záložky **Actions**
-2. Vyber workflow který chceš otestovat
-3. Klikni na **Run workflow**
+1. Go to the **Actions** tab
+2. Select the workflow you want to test
+3. Click **Run workflow**
