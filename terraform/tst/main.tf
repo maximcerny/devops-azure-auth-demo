@@ -19,8 +19,8 @@ data "azurerm_resource_group" "main" {
 resource "azurerm_virtual_network" "main" {
     name                = "vnet-demo-tst"
     address_space       = ["10.1.0.0/16"]
-    location            = data.data.azurerm_resource_group.main.location
-    resource_group_name = data.data.azurerm_resource_group.main.name
+    location            = data.azurerm_resource_group.main.location
+    resource_group_name = data.azurerm_resource_group.main.name
 }
 
 resource "azurerm_subnet" "main" {
