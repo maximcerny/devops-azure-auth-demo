@@ -10,7 +10,7 @@ terraform {
 provider "azurerm" {
     features {}
     use_oidc                        = true
-    resource_provider_registrations = "none"
+    skip_provider_registration      = true
 }
 
 data "azurerm_resource_group" "main" {
